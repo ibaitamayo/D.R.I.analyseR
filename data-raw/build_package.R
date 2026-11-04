@@ -255,8 +255,11 @@ writeLines(c(
   "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE",
   "SOFTWARE."), file.path(PKG, "LICENSE.md"))
 
+# ASSUMPTIONS.md is for whoever reads the repository; the same content, generated from the
+# tables actually loaded, is the application's last tab.
 writeLines(c("^data-raw$", "^.*\\.Rproj$", "^\\.Rproj\\.user$", "^\\.github$",
-             "^README\\.Rmd$", "^LICENSE\\.md$", "^\\.DS_Store$"), file.path(PKG, ".Rbuildignore"))
+             "^README\\.Rmd$", "^LICENSE\\.md$", "^ASSUMPTIONS\\.md$", "^\\.DS_Store$"),
+           file.path(PKG, ".Rbuildignore"))
 writeLines(c(".Rproj.user", ".Rhistory", ".RData", ".Ruserdata", ".DS_Store",
              "*.tar.gz", "*.Rcheck/", "", "# Never: these hold patient-level rows.",
              "*.rds", "tablas_app/", "datos*/", "EUDA*/"), file.path(PKG, ".gitignore"))
