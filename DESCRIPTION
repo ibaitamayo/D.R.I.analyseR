@@ -1,0 +1,43 @@
+Package: D.R.I.analyseR
+Type: Package
+Title: Cohort, Infection, Treatment and Outcome Analysis for Drug-Related
+    Infectious Diseases
+Version: 0.1.0
+Authors@R: person("Ibai", "Tamayo", email = "ibai.tamayo.rodriguez@navarra.es",
+    role = c("aut", "cre"))
+Description: Finds, for each person, the first date of every disease, treatment
+    and outcome defined from diagnosis codes, drug dispensations and a patient
+    table, and takes them through the six phases of a drug-related infectious
+    disease study: who uses drugs, who has the infection, who was treated, what
+    happened, how it looks over calendar time, and what the competing risks say.
+    Coding systems never mix, and a code is compared only within its own:
+    hierarchical ones (ICD, ICPC, ATC) by prefix, flat identifiers (SNOMED,
+    RxNorm) by equality. A code may be declared as one that dates a disease
+    without diagnosing it, or as valid only within a range of dates. Definitions
+    travel with the data as tables, so what was measured can be read and changed
+    without touching the code. Both the cause-specific and the subdistribution
+    hazard ratio are reported, because they answer different questions.
+License: MIT + file LICENSE
+Encoding: UTF-8
+URL: https://github.com/ibaitamayo/D.R.I.analyseR
+BugReports: https://github.com/ibaitamayo/D.R.I.analyseR/issues
+Depends:
+    R (>= 4.2)
+Imports:
+    data.table,
+    survival,
+    stats,
+    utils
+Suggests:
+    shiny,
+    bslib,
+    readxl,
+    writexl,
+    reactable,
+    ggplot2,
+    jsonlite,
+    bupaR,
+    edeaR,
+    processmapR,
+    DiagrammeR
+RoxygenNote: 7.2.3

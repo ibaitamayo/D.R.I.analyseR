@@ -1,0 +1,13 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+*.tar.gz
+*.Rcheck/
+
+# Never: these hold patient-level rows.
+*.rds
+tablas_app/
+datos*/
+EUDA*/
