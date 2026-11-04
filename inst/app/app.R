@@ -1,6 +1,6 @@
-# MorbfindR · event finder from diagnoses and drug dispensations
+# D.R.I.analyseR · events, cohorts and outcomes from diagnoses and drug dispensations
 # Local app: data never leave the computer where it runs.
-#   shiny::runApp("path/to/MorbfindR_app")
+#   D.R.I.analyseR::run_app()   (or shiny::runApp("path/to/this/folder"))
 #
 # Four tables, each with its key fields mapped when loaded:
 #   1. patient–diagnosis   2. patient–drug   3. disease–diagnosis code   4. disease–ATC code
@@ -82,22 +82,57 @@ new_progress <- function(p) {
   }
 }
 
+# An empty template teaches nothing, so these rows are small working examples of every column a
+# definition may carry, including the three that are easy to miss: the role the event plays,
+# whether a code diagnoses or only dates, and the range of dates in which it applies.
 templates <- list(
-  disease_diagnosis = data.table(Disease = c("Drug_use", "Drug_use", "Drug_use", "HCV", "HCV"),
-                                 CodeType = c("ICD-10-CM", "ICD-9-CM", "CIAP2", "ICD-10-CM", "ICD-9-CM"),
-                                 DxCode = c("F11", "304.0", "P19", "B18.2", "070.54"),
-                                 Source = c("Quan 2008", "Quan 2008", "BDCAP", "Ball 2017", "ICD-10 -> ICD-9 mapping")),
-  disease_atc = data.table(Disease = c("HCV", "Opioid_agonist_treatment"), ATC = c("J05AP", "N07BC"),
-                           MinDispensations = c(1, 2), Source = c("ATC", "ATC")),
+  disease_diagnosis = data.table(
+    Disease   = c("Drug_use", "Drug_use", "Drug_use", "HCV", "HCV", "HCV", "HBV", "Injecting_drug_use"),
+    Role      = c("cohort", "cohort", "cohort", "disease", "disease", "disease", "disease", "marker"),
+    CodeType  = c("ICD-10-CM", "ICD-9-CM", "CIAP2", "ICD-10-CM", "ICD-9-CM", "CIAP2", "CIAP2", "ICD-10-CM"),
+    DxCode    = c("F11", "304.0", "P19", "B18.2", "070.54", "D72", "D72", "F11"),
+    Use       = c("case", "case", "case", "case", "case", "date", "case", "case"),
+    ValidFrom = c("", "", "", "", "", "1990-01-01", "", ""),
+    ValidTo   = c("", "", "", "", "", "", "1989-12-31", ""),
+    Source    = c("Quan 2005, Med Care 43(11):1130-9", "Quan 2005, Med Care 43(11):1130-9",
+                  "BDCAP catalogue (ICPC-2)", "Ball 2017", "ICD-10 to ICD-9 mapping",
+                  "Unspecified viral hepatitis: dates a confirmed case, never diagnoses one",
+                  "Before 1990 unspecified viral hepatitis cannot be hepatitis C",
+                  "Opioid use disorder, used here as a marker of injecting")),
+  disease_atc = data.table(
+    Disease = c("HCV", "HCV_treatment_DAA", "Opioid_agonist_treatment"),
+    Role    = c("disease", "treatment", "cohort"),
+    ATC     = c("J05AP", "J05AP", "N07BC"),
+    MinDispensations = c(1, 1, 2),
+    Source  = c("An eradicating treatment is only dispensed to someone with hepatitis C",
+                "Direct-acting antivirals", "Opioid agonist treatment as a proxy for dependence")),
+  cause_of_death = data.table(
+    Cause    = c("HCV_associated_death", "HCV_associated_death", "HCV_associated_death"),
+    CodeType = c("ICD-10-CM", "ICD-10-CM", "ICD-10-CM"),
+    Code     = c("B18.2", "C22.0", "K74"),
+    Source   = c("Hepatitis C", "Hepatocellular carcinoma", "Chronic liver disease")),
   instructions = data.table(
-    Topic = c("Column names", "Code type", "Codes and granularity", "ATC codes", "MinDispensations", "Rules"),
+    Topic = c("Column names", "Role", "Code type", "Codes and granularity", "Use",
+              "ValidFrom / ValidTo", "ATC codes", "MinDispensations", "Rules", "Source"),
     Description = c(
       "Free: key fields are mapped in the app when each table is loaded.",
+      paste("What the event is: cohort (who the population is), disease, comorbidity, treatment,",
+            "marker or mortality. A marker says which people the analysis is about -- that they",
+            "injected, that they were in prison -- and never starts a follow-up or acts as an",
+            "outcome; it restricts the cohort from a checkbox in tab 3. Who counts as a drug user",
+            "is the set of events whose role is 'cohort': change those rows and the cohort changes."),
       "Coding system of each diagnosis code: CIAP/CIAP2/ICPC, CIE-9/ICD-9 (or 9), CIE-10/ICD-10 (or 10ES).",
       "No dot = whole category (E860 includes E860.0). With a dot = that level and its children (E86.0 includes E86.01, not E86.1).",
+      paste("'case' (the default) diagnoses the event and can date it. 'date' can only date it:",
+            "an unspecified code in someone already diagnosed by other means is often the earliest",
+            "record of the condition, but it cannot establish it. A definition made only of 'date'",
+            "codes is refused."),
+      paste("The range of dates in which that row applies. Either end may be left empty. It lets",
+            "the same code belong to one disease up to a date and to another after it."),
       "Prefix as well: J05AP includes every J05AP* drug.",
       "Optional: distinct dispensation dates required; the event date is that of the dispensation reaching it. Default 1.",
-      "For diseases present in both definition tables, the app asks whether diagnosis OR drug, diagnosis AND drug, or only one of them defines the event. A disease can be defined as diagnosed OR treated, but a treatment event must be defined by the drug alone: a diagnosis never makes someone treated.")))
+      "For diseases present in both definition tables, the app asks whether diagnosis OR drug, diagnosis AND drug, or only one of them defines the event. A disease can be defined as diagnosed OR treated, but a treatment event must be defined by the drug alone: a diagnosis never makes someone treated.",
+      "Free text, not used in the search. It is what the documentation tab prints, so it is where a citation, or the decision taken for want of one, belongs.")))
 
 clock_js <- tags$script(HTML("
   var clocks = {};
@@ -134,7 +169,7 @@ table_card <- function(id, title, help, big = TRUE) {
 # ---- UI ----------------------------------------------------------------------------
 ui <- page_navbar(
   id = "nav",
-  title = "MorbfindR · event finder",
+  title = "D.R.I.analyseR",
   theme = bs_theme(version = 5, bootswatch = "flatly"),
   # only the process map needs to fill the window; elsewhere the content keeps its natural height
   fillable = "4. Process map",
@@ -156,23 +191,42 @@ ui <- page_navbar(
   nav_panel("Start here",
     layout_columns(col_widths = c(5, 7),
       card(id = "steps_card", card_header("What this app does"),
-        p("It finds, for each patient, the ", strong("first date"), " of each disease or event you define, ",
-          "using diagnosis codes (CIAP / ICD-9 / ICD-10) and, optionally, drug dispensations (ATC). ",
-          "The result can be turned into an event log and a process map."),
+        p("It finds, for each patient, the ", strong("first date"), " of each disease or event defined ",
+          "in a table, using diagnosis codes (CIAP / ICD-9 / ICD-10 / SNOMED) and, optionally, drug ",
+          "dispensations (ATC / RxNorm). From those dates it builds the cohort, the infections, the ",
+          "treatments, the outcomes and the competing risks."),
+        p(class = "small text-muted",
+          strong("Nothing here is specific to one disease."), " What is measured lives in the ",
+          "definition tables: change them and the same analysis runs on something else."),
         h6("Steps"),
         tags$ol(
-          tags$li(strong("Prepare your tables"), " (three with patient data, two with definitions). What each must contain is described on the right, ",
-                  "and again next to each upload box. Templates for the definitions can be downloaded in tab 2."),
-          tags$li(strong("Tab 1 · Patient data:"), " upload the patient – diagnosis table and, if you use drugs, the patient – drug table. ",
-                  "Tell the app which column is which (", em("key fields"), ") and check the preview and the quick checks."),
-          tags$li(strong("Tab 2 · Definitions:"), " upload the disease – diagnosis code table and/or the disease – ATC table, map their key fields ",
-                  "and choose, for diseases defined by both, whether diagnosis OR drug, or diagnosis AND drug, is required."),
-          tags$li(strong("Tab 3 · Results:"), " press ", em("Find events"), ". Download the table with the first date per disease."),
-          tags$li(strong("Tab 4 · Process map"), " (optional): draw the most frequent trajectories between diseases.")),
-        p("To see how it works before using your own data, press ", strong("Load example tables"), " in tab 1."),
+          tags$li(strong("Prepare the tables"), ": three with patient data and three with definitions. ",
+                  "What each must contain is described on the right, and again next to each upload box. ",
+                  "Templates and the definitions currently loaded can both be downloaded in tab 2."),
+          tags$li(strong("Tab 1 · Patient data"), ": the patient – diagnosis table, the patient – drug ",
+                  "table if there is one, and the patient table with sex, birth, death and end of ",
+                  "follow-up. Then say which column is which (", em("key fields"), ") and read the checks."),
+          tags$li(strong("Tab 2 · Definitions"), ": the disease – diagnosis code table, the disease – ATC ",
+                  "table and the cause-of-death table. For a disease defined by both, choose whether ",
+                  "diagnosis OR drug, or diagnosis AND drug, is required."),
+          tags$li(strong("Tab 3 · Event search"), ": press ", em("Find events"), ". The six phases are counted ",
+                  "by person, and the analysis table can be downloaded. If a definition carries the role ",
+                  em("marker"), " — injecting drug use, for instance — a checkbox here restricts every tab ",
+                  "below to those people, without changing anybody's dates."),
+          tags$li(strong("Tab 4 · Process map"), ": the sequences people actually follow, and how long ",
+                  "between one event and the next."),
+          tags$li(strong("Tab 5 · Outcomes"), ": uptake, counts and incidence rates by calendar year, with ",
+                  "exact Poisson intervals, optionally split by a group."),
+          tags$li(strong("Tab 6 · Outcome modeling"), ": time to event with competing risks, cumulative ",
+                  "incidence, and both the cause-specific and the Fine–Gray hazard ratio."),
+          tags$li(strong("Definitions in use"), ", the last tab: what the loaded definitions actually say, ",
+                  "with the source where one exists and the decision taken where it does not.")),
+        p("To see it work before using real data, press ", strong("Load example patient tables"), " in tab 1 ",
+          "and ", strong("Load the DRID definitions"), " in tab 2. The people are synthetic; the definitions ",
+          "are the real code lists."),
         h6("General rules"), GENERAL_HELP(),
         tags$button(class = "btn btn-outline-warning btn-sm", onclick = "mfResetGuide()", icon("rotate-left"), " Restart the step-by-step guide")),
-      card(id = "four_tables", card_header("Your tables: three of patients, two of definitions"),
+      card(id = "four_tables", card_header("The tables: three of patients, three of definitions"),
         navset_underline(
           nav_panel("1 · Persons and diagnoses", spec_ui("pdx")),
           nav_panel("2 · Persons and treatments", spec_ui("pdrug")),
@@ -216,6 +270,12 @@ ui <- page_navbar(
         actionButton("example_def", "Load the DRID definitions", class = "btn-outline-secondary mb-3"),
         span(class = "text-muted mb-3 small", "Quan 2008, Ball 2017, INE and EUDA (revised)."),
         downloadButton("template", "Download templates", class = "btn-outline-secondary mb-3"),
+        downloadButton("dl_loaded_defs", "Download the definitions now loaded", class = "btn-outline-secondary mb-3"),
+        p(class = "small text-muted mf-help",
+          "The second button writes out the definitions currently loaded, exactly as they are, ",
+          "one sheet per table. That is how a shipped definition is changed: download it, edit ",
+          "the rows \u2014 the codes, or the Role that decides who counts as a drug user \u2014 and load the ",
+          "file back in. Nothing in this app is fixed except that it reads these tables."),
         span(class = "text-muted mb-3 mf-help", "You can edit them, or load your own files below.")),
     layout_columns(col_widths = c(6, 6),
       table_card("ddx", "3 · Disease – diagnosis code", "Needed for diseases defined by diagnoses.", big = FALSE),
@@ -688,6 +748,19 @@ server <- function(input, output, session) {
     else div(class = "alert alert-warning mt-2", tags$ul(lapply(w, tags$li)))
   })
   output$template <- downloadHandler("definition_templates.xlsx", function(file) write_xlsx(templates, file))
+  # The definitions as loaded, so they can be edited and loaded back. Without this, changing a
+  # definition that ships with the package would mean retyping hundreds of codes, and a
+  # definition nobody can edit is not a definition in a table: it is one in the code.
+  output$dl_loaded_defs <- downloadHandler(
+    function() paste0("definitions_loaded_", format(Sys.Date(), "%Y%m%d"), ".xlsx"),
+    function(file) {
+      sheets <- list()
+      if (!is.null(rv$ddx))    sheets[["disease_diagnosis"]] <- as.data.frame(rv$ddx)
+      if (!is.null(rv$datc))   sheets[["disease_atc"]]       <- as.data.frame(rv$datc)
+      if (!is.null(rv$dcause)) sheets[["cause_of_death"]]    <- as.data.frame(rv$dcause)
+      validate(need(length(sheets) > 0, "No definition table is loaded yet."))
+      write_xlsx(sheets, file)
+    })
 
   # ---- search ----
   search_result <- eventReactive(input$run, {

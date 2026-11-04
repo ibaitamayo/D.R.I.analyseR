@@ -98,6 +98,11 @@ only dating, within which window, and how many dispensations are needed — is i
 
 ## Replacing any of this
 
+The definitions that ship are loaded from inside the package, so they cannot be edited in
+place. To change one, use **Download the definitions now loaded** in tab 2: it writes out what
+is loaded, exactly as it is, one sheet per table. Edit the rows and load the file back in. To
+change who counts as a drug user, change which rows carry `Role = cohort`.
+
 Three spreadsheets, one row per code:
 
 **Disease – diagnosis code**
