@@ -18,12 +18,58 @@ say <- function(...) cat(sprintf(...), "\n", sep = "")
 # ---- R/ : the same code with library() removed ---------------------------------------------
 # library() inside a package attaches a second copy of a namespace at load time and hides which
 # function came from where. The dependencies are declared in DESCRIPTION and NAMESPACE instead.
+# A portable package holds only ASCII in its R code. The working folder keeps the characters
+# as written, because they are easier to read; here a character inside a string becomes a
+# \uXXXX escape, which produces exactly the same string, and one in a comment is transliterated,
+# because a comment is for a reader and an escape would not be.
+asciify <- function(line) {
+  ch <- strsplit(line, "", fixed = TRUE)[[1]]
+  if (!length(ch) || !any(utf8ToInt(line) > 127L, na.rm = TRUE)) return(line)
+  out <- character(length(ch)); in_str <- ""; esc <- FALSE; comment <- FALSE
+  for (i in seq_along(ch)) {
+    c0 <- ch[i]; code <- utf8ToInt(c0)
+    if (!comment) {
+      if (esc) esc <- FALSE
+      else if (nzchar(in_str)) { if (c0 == "\\") esc <- TRUE else if (c0 == in_str) in_str <- "" }
+      else if (c0 == "\"" || c0 == "'") in_str <- c0
+      else if (c0 == "#") comment <- TRUE
+    }
+    out[i] <- if (code <= 127L) c0
+      else if (nzchar(in_str)) {
+        # \u takes at most four hex digits, so anything above the basic plane needs \U and
+        # eight: written as \u, an emoji silently becomes a different character.
+        if (code > 0xFFFFL) sprintf("\\U%08x", code) else sprintf("\\u%04x", code)
+      }
+      else { a <- iconv(c0, "UTF-8", "ASCII//TRANSLIT"); if (is.na(a) || !nzchar(a)) "?" else a }
+  }
+  paste(out, collapse = "")
+}
+
 for (f in list.files("R", pattern = "[.]R$")) {
-  txt <- readLines(file.path("R", f), warn = FALSE)
+  txt <- readLines(file.path("R", f), warn = FALSE, encoding = "UTF-8")
   drop <- grepl("^\\s*suppressMessages\\(\\{?\\s*library\\(|^\\s*library\\(", txt)
-  writeLines(txt[!drop], file.path(PKG, "R", f))
+  txt <- vapply(txt[!drop], asciify, character(1), USE.NAMES = FALSE)
+  writeLines(txt, file.path(PKG, "R", f), useBytes = TRUE)
   if (any(drop)) say("  %-20s %d library() line(s) removed", f, sum(drop))
 }
+
+# Round-trip check: every string literal in the escaped copy must be identical to the one in
+# the file it came from. An escape that silently changes a character is exactly the kind of
+# thing nobody notices until it is on screen.
+for (f in list.files("R", pattern = "[.]R$")) {
+  a <- tryCatch(parse(file.path("R", f), keep.source = FALSE), error = function(e) NULL)
+  b <- tryCatch(parse(file.path(PKG, "R", f), keep.source = FALSE), error = function(e) NULL)
+  if (is.null(a) || is.null(b)) next
+  strs <- function(e) { out <- character(0)
+    rec <- function(x) { if (is.character(x)) out <<- c(out, x)
+      else if (is.call(x) || is.pairlist(x) || is.expression(x)) for (i in seq_along(x)) rec(x[[i]]) }
+    for (i in seq_along(e)) rec(e[[i]]); out }
+  sa <- strs(a); sb <- strs(b)
+  bad <- which(sa != sb)
+  if (length(bad))
+    stop("Escaping changed a string in ", f, ": ", sQuote(sa[bad[1]]), " became ", sQuote(sb[bad[1]]))
+}
+say("  R/: strings verified identical after escaping")
 
 # ---- the entry point ------------------------------------------------------------------------
 writeLines(c(
@@ -87,7 +133,8 @@ writeLines(c(
 '  "with_index_event", "with_outcome", "without_outcome", "pct_with_outcome", "persons_at_risk",',
 '  "ci_low", "ci_high", "term", "p", "model", "ev", "n", "has_dx", "has_drug", "roles", "N_",',
 '  "Disease", "CodeType", "DxCode", "Use", "ValidFrom", "ValidTo", "Source", "Role", "ATC",',
-'  "MinDispensations", "value", "variable", "cause", "disease", "step", "rows", "label"))'),
+'  "MinDispensations", "value", "variable", "cause", "disease", "step", "rows", "label",',
+'  ".", ".terminal", "all_dating", "cell", "instance", "is_case", "name", "st", "state"))'),
   file.path(PKG, "R", "zzz.R"))
 
 # ---- inst/ : the app and the example tables -------------------------------------------------
@@ -113,7 +160,9 @@ file.copy(ex, file.path(PKG, "inst", "extdata"), overwrite = TRUE)
 say("  inst/extdata: %d example table(s)", length(ex))
 # The suites source the engine from R/ when run in the working folder; inside the package the
 # engine is already there, so the source() lines become an attach.
-for (f in list.files("tests", pattern = "[.]R$")) {
+# Only the suites over synthetic cases. Anything else under tests/ is local validation against
+# the real extraction: it would not run anywhere else and it names paths that must not travel.
+for (f in list.files("tests", pattern = "^test_.*[.]R$")) {
   txt <- readLines(file.path("tests", f), warn = FALSE)
   src <- grepl('source\\("R/|for \\(f in c\\("engine"', txt)
   # The suites build their own data.tables, so they still need data.table attached; what they
@@ -151,7 +200,7 @@ writeLines(c(
   paste0("export(", esc(fns), ")"),
   "import(data.table)",
   "importFrom(stats, as.formula, median, na.omit, qchisq, quantile, setNames)",
-  "importFrom(survival, Surv, coxph, finegray)",
+  "importFrom(survival, Surv, coxph, finegray, survfit)",
   "importFrom(utils, globalVariables, head, tail)"), file.path(PKG, "NAMESPACE"))
 say("  NAMESPACE: %d exported function(s)", length(fns))
 
@@ -211,5 +260,151 @@ writeLines(c("^data-raw$", "^.*\\.Rproj$", "^\\.Rproj\\.user$", "^\\.github$",
 writeLines(c(".Rproj.user", ".Rhistory", ".RData", ".Ruserdata", ".DS_Store",
              "*.tar.gz", "*.Rcheck/", "", "# Never: these hold patient-level rows.",
              "*.rds", "tablas_app/", "datos*/", "EUDA*/"), file.path(PKG, ".gitignore"))
+
+# ---- man/ : grouped help pages ---------------------------------------------------------------
+# Written here rather than with roxygen2, which is not a dependency of this project. Every
+# exported name needs a help page or R CMD check reports it as missing; grouping them by what
+# they are for gives a reader something better than eighty pages of one paragraph each. The
+# groups are checked against NAMESPACE below, so a new export cannot be forgotten.
+unlink(file.path(PKG, "man"), recursive = TRUE); dir.create(file.path(PKG, "man"))
+rd <- function(name, title, desc, aliases, details = NULL, seealso = NULL, extra = NULL) {
+  esc_rd <- function(x) gsub("([%{}\\\\])", "\\\\\\1", x)
+  writeLines(c(
+    "% Generated by data-raw/build_package.R -- do not edit by hand.",
+    paste0("\\name{", name, "}"),
+    paste0("\\alias{", aliases, "}"),
+    paste0("\\title{", esc_rd(title), "}"),
+    paste0("\\description{\n", esc_rd(desc), "\n}"),
+    if (!is.null(details)) paste0("\\details{\n", esc_rd(details), "\n}"),
+    extra,
+    if (!is.null(seealso)) paste0("\\seealso{", seealso, "}"),
+    "\\keyword{manip}"), file.path(PKG, "man", paste0(name, ".Rd")))
+  aliases
+}
+covered <- character(0)
+add <- function(...) covered <<- c(covered, rd(...))
+
+add("reading-tables", "Reading the input tables",
+  paste("Each function takes one table as it arrives and returns it in the shape the search",
+        "expects, together with a summary of what was dropped and why. Nothing is discarded",
+        "silently: a row without a date, a code in a system the definitions do not use or a",
+        "repeated identifier is counted and reported."),
+  c("reading-tables", "prepare_diagnoses", "prepare_drugs", "prepare_patients", "prepare_eras",
+    "as_date", "detect_date_format", "normalise_code", "coding_system", "coding_version",
+    "version_family", "is_icd10_dx_format", "DATE_FORMATS", "DRUG_SYSTEMS", "EXACT_SYSTEMS"),
+  details = paste("A code is compared only within its own coding system. Hierarchical systems",
+        "(ICD, ICPC, ATC) are compared by prefix, because truncating a code is how a definition",
+        "says \"the whole category\"; flat identifiers (SNOMED, RxNorm) are compared whole, since",
+        "a shorter one is not a parent but a different concept."))
+
+add("definitions", "Definition tables: what is being measured",
+  paste("A definition is a list of codes with a name. Beyond the name, the coding system and",
+        "the code, a row may declare the role the event plays, whether the code can diagnose or",
+        "only date, and the range of dates in which it applies."),
+  c("definitions", "prepare_definition", "ROLES", "RULES", "USES", "ROLE_ALIASES",
+    "RULE_ALIASES", "USE_ALIASES", "RESERVED_EVENTS", "reserved_event_warnings",
+    "in_window", "table_specs"),
+  details = paste("Roles are birth, cohort, disease, comorbidity, treatment, marker and mortality.",
+        "A marker says which population the analysis is about and never starts a follow-up or",
+        "acts as an outcome. A code whose use is \"date\" cannot establish the event but can",
+        "supply its earliest date in a person who has it on other evidence; a definition made",
+        "only of such codes is refused."))
+
+add("finding-events", "Finding the first date of every event",
+  paste("The search itself: codes are matched against the diagnosis and dispensation tables and",
+        "reduced to one date per person and per event, the first occurrence."),
+  c("finding-events", "find_events", "match_codes", "unmatched_warnings", "rows_by_system",
+    "system_coverage_warnings", "version_warnings"))
+
+add("patient-events", "Events that come from the patient table",
+  paste("Birth, death, the cause of death and the end of follow-up are not searched for in the",
+        "diagnosis table: they are read from the patient table and appended to the same long",
+        "table, so every view downstream treats them like any other event."),
+  c("patient-events", "patient_events", "cohort_entry", "event_roles", "order_terminal_last",
+    "age_at", "age_band", "era_at", "add_months", "year_of"),
+  details = paste("A death with no recorded cause becomes an event of its own rather than being",
+        "folded into the others, so the extent of missing cause information stays visible."))
+
+add("population", "Who the analysis is about",
+  paste("The cohort as defined by the drug-use events, or a matched comparison with people who",
+        "have no documented use."),
+  c("population", "population_groups", "match_controls", "phase_funnel"))
+
+add("calendar-views", "Uptake, rates and counts by calendar year",
+  paste("Views over calendar time: how many people had reached each event by the end of each",
+        "year, how many person-years were accumulated, and the incidence rate with exact",
+        "Poisson confidence intervals."),
+  c("calendar-views", "follow_up", "cumulative_uptake", "rates_by_year", "events_by_year",
+    "person_years_by_year", "by_group", "group_from_event", "trim_empty_years",
+    "empty_uptake", "empty_rates"),
+  details = paste("Years before the first person and after the last are not data but the span of",
+        "the oldest record in the table, so they are dropped. An empty year in the middle is",
+        "kept, because a gap is a finding."))
+
+add("competing-risks", "Time to event with competing risks",
+  paste("The person-level table the models read, and the two summaries that do not need a model:",
+        "events and rates per group, and the Aalen-Johansen cumulative incidence."),
+  c("competing-risks", "time_to_event", "event_summary", "cumulative_incidence",
+    "CENSORED", "OUTCOME", "COMPETING"),
+  details = paste("A person who dies of another cause can no longer reach the outcome. That is not",
+        "censoring, which means observation stopped: the outcome has become impossible, so the",
+        "death is treated as a competing event. One minus Kaplan-Meier would overestimate the",
+        "cumulative incidence, which is why Aalen-Johansen is used."))
+
+add("models", "Cause-specific and subdistribution hazard ratios",
+  paste("Both models are fitted and reported side by side, because they answer different",
+        "questions and can point in different directions."),
+  c("models", "model_data", "usable_covariates", "model_warnings", "fit_cause_specific",
+    "fit_subdistribution", "fit_models", "tidy_cox"),
+  details = paste("The cause-specific hazard ratio asks how much faster the outcome happens among",
+        "those still at risk; the subdistribution (Fine-Gray) hazard ratio asks how much the",
+        "cumulative incidence differs. A treatment that prolongs survival grants more time in",
+        "which to reach the outcome, and only the second reflects that. Neither is called",
+        "\"the\" hazard ratio."))
+
+add("process-map", "The sequences people actually follow",
+  paste("The event log and the process map built from it: which events each person passes",
+        "through, in what order, and the median time between consecutive events."),
+  c("process-map", "build_eventlog", "process_map_widget", "ROLE_COLOURS"))
+
+add("app-ui", "Pieces the application uses",
+  paste("Help text, table specifications and guided-tour steps shown by the Shiny application.",
+        "They are part of the package so that what the application says about a table and what",
+        "the engine does with it cannot drift apart."),
+  c("app-ui", "DATE_HELP", "TYPE_HELP", "DRUG_TYPE_HELP", "GENERAL_HELP", "html_table",
+    "spec_ui", "guide_steps", "guide_hints", "guide_head", "send_hint", "ghost_zone"))
+
+invisible(rd("run_app", "Run the D.R.I.analyseR application",
+  paste("Opens the Shiny application in a browser. Every table is loaded from inside the",
+        "application, so nothing has to be prepared beforehand."),
+  c("run_app", "drid_examples"),
+  extra = c(
+    "\\usage{",
+    "run_app(data_dir = Sys.getenv(\"DRID_DATA\", \"\"), ...)",
+    "",
+    "drid_examples(file = NULL)",
+    "}",
+    "\\arguments{",
+    "  \\item{data_dir}{Optional folder already holding the three tables under the names the",
+    "    application asks for. A button in tab 1 then loads all three at once. Defaults to the",
+    "    environment variable \\code{DRID_DATA}, and to none when that is unset.}",
+    "  \\item{...}{Passed to \\code{\\link[shiny]{runApp}}, for example \\code{port}.}",
+    "  \\item{file}{Optional file name. Without it, the folder itself is returned.}",
+    "}",
+    "\\value{\\code{run_app} is called for its side effect. \\code{drid_examples} returns a path.}",
+    "\\examples{",
+    "head(list.files(drid_examples()))",
+    "}")))
+covered <- c(covered, "run_app", "drid_examples")
+
+missing <- setdiff(fns, covered)
+if (length(missing))
+  stop("These exported names have no help page; add them to a group in data-raw/build_package.R: ",
+       paste(missing, collapse = ", "))
+stray <- setdiff(setdiff(covered, fns), c("reading-tables", "definitions", "finding-events",
+  "patient-events", "population", "calendar-views", "competing-risks", "models", "process-map", "app-ui"))
+if (length(stray)) say("  man/: %d name(s) documented but not exported: %s", length(stray), paste(stray, collapse = ", "))
+say("  man/: %d page(s) covering %d exported name(s)", length(list.files(file.path(PKG, "man"))), length(fns))
+
 say("  DESCRIPTION, NAMESPACE, LICENSE, .Rbuildignore, .gitignore")
 say("\nAssembled in %s", PKG)

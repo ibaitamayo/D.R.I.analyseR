@@ -14,4 +14,5 @@ utils::globalVariables(c(
   "with_index_event", "with_outcome", "without_outcome", "pct_with_outcome", "persons_at_risk",
   "ci_low", "ci_high", "term", "p", "model", "ev", "n", "has_dx", "has_drug", "roles", "N_",
   "Disease", "CodeType", "DxCode", "Use", "ValidFrom", "ValidTo", "Source", "Role", "ATC",
-  "MinDispensations", "value", "variable", "cause", "disease", "step", "rows", "label"))
+  "MinDispensations", "value", "variable", "cause", "disease", "step", "rows", "label",
+  ".", ".terminal", "all_dating", "cell", "instance", "is_case", "name", "st", "state"))

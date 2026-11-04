@@ -75,7 +75,7 @@ version_warnings <- function(data_types, def_types) {
                            "Codes can differ between national versions: check that data and definitions use the same one."))
     else if (!setequal(unique(version_family(d)), unique(version_family(f))))
       out <- c(out, paste0("Data coded in ", paste(d, collapse = ", "), " but definitions written for ", paste(f, collapse = ", "),
-                           ". Some codes may not exist or may mean something else (e.g. HIV is B20 in ICD-10-CM / ICD-10-ES but B20–B24 in WHO ICD-10; ",
+                           ". Some codes may not exist or may mean something else (e.g. HIV is B20 in ICD-10-CM / ICD-10-ES but B20\u2013B24 in WHO ICD-10; ",
                            "poisoning intent is a 6th character in ICD-10-CM / ICD-10-ES (T40.1X1) but an external-cause code in WHO ICD-10 (X42)). Review the definition."))
   }
   out
@@ -339,7 +339,7 @@ match_codes <- function(data, codes, progress = NULL) {
   if (!"use"  %in% names(codes)) codes <- copy(codes)[, use := "case"]
   if (!"from" %in% names(codes)) codes[, from := as.Date(NA)]
   if (!"to"   %in% names(codes)) codes[, to := as.Date(NA)]
-  # total work = rows scanned for each system × code length combination; an exact system is
+  # total work = rows scanned for each system x code length combination; an exact system is
   # a single pass, so it contributes one row and not one per code length.
   exact <- intersect(unique(codes$system), EXACT_SYSTEMS)
   work <- rbind(codes[!system %in% exact, .(L = unique(nchar(cod))), by = system],
@@ -387,7 +387,7 @@ unmatched_warnings <- function(x) {
   paste0(length(cods), " definition code(s) in ", paste(unique(u$system), collapse = ", "),
          " matched no row. These systems are compared by equality of the whole code, not by prefix,",
          " so a truncated or mistyped identifier finds nothing: ",
-         paste(utils::head(cods, 20), collapse = ", "), if (length(cods) > 20) ", …" else "", ".")
+         paste(utils::head(cods, 20), collapse = ", "), if (length(cods) > 20) ", \u2026" else "", ".")
 }
 
 # progress: optional function (fraction 0-1, text) to report advance

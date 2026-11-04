@@ -8,7 +8,7 @@
 
 guide_steps <- list(
   "Start here" = list(
-    list(title = "Welcome! 👋", text = "This app finds, for each patient, the first date of each disease you define, from diagnosis codes and drug dispensations. I'll guide you step by step."),
+    list(title = "Welcome! \U0001f44b", text = "This app finds, for each patient, the first date of each disease you define, from diagnosis codes and drug dispensations. I'll guide you step by step."),
     list(target = "#four_tables", title = "Your tables",
          text = "You will need up to five tables: three with patient data and two with disease definitions. Click each tab here to see which columns they need and in what format."),
     list(target = "#steps_card", title = "The route", text = "These are the steps. Each tab of the app is one step, and I'll be there in each of them."),
@@ -16,19 +16,19 @@ guide_steps <- list(
          text = "When your tables are ready (or if you just want to practise with example data), go to tab 1.")),
   "1. Patient data" = list(
     list(target = "#example_box", title = "Practice mode", text = "No data yet? Load example tables for all five slots and try everything safely. Choose the simple demo, or the DRID definitions from the literature (Quan 2008, Ball 2017, INE, EUDA)."),
-    list(target = "#zone_pdx", title = "Slot 1 · Patient – diagnosis",
-         text = "Drop your patient – diagnosis table here. The faded table behind shows what it should look like: one row per diagnosis, with patient, code, code type and date."),
+    list(target = "#zone_pdx", title = "Slot 1 \u00b7 Patient \u2013 diagnosis",
+         text = "Drop your patient \u2013 diagnosis table here. The faded table behind shows what it should look like: one row per diagnosis, with patient, code, code type and date."),
     list(target = "#card_pdx .accordion", title = "Need the details?", text = "Open this to see every column, its format and accepted values."),
     list(target = "#opts_pdx", title = "Reading options",
          text = "Only for csv/txt: leave 'auto' unless all columns appear merged into one. If accents look broken, switch to Latin-1."),
-    list(target = "#zone_pdrug", title = "Slot 2 · Patient – drug (optional)",
+    list(target = "#zone_pdrug", title = "Slot 2 \u00b7 Patient \u2013 drug (optional)",
          text = "Only needed if some disease is defined by drugs: one row per dispensation, with patient, ATC code and date."),
-    list(target = "#drop_proc_wrap", title = "Keep this ticked ✔", text = "It removes procedure codes stored among diagnoses, so they are not mistaken for diseases.")),
+    list(target = "#drop_proc_wrap", title = "Keep this ticked \u2714", text = "It removes procedure codes stored among diagnoses, so they are not mistaken for diseases.")),
   "2. Definitions" = list(
     list(target = "#template", title = "Templates", text = "Download ready-to-fill Excel templates for both definition tables, with instructions."),
-    list(target = "#zone_ddx", title = "Slot 3 · Disease – diagnosis code",
+    list(target = "#zone_ddx", title = "Slot 3 \u00b7 Disease \u2013 diagnosis code",
          text = "One row per code in each disease definition: disease name, code type and code. No dot = whole category; with a dot = that level and below."),
-    list(target = "#zone_datc", title = "Slot 4 · Disease – ATC code",
+    list(target = "#zone_datc", title = "Slot 4 \u00b7 Disease \u2013 ATC code",
          text = "One row per ATC code in each drug-based definition. Use exactly the same disease name as in slot 3 if a disease uses both."),
     list(target = "#rules_card", title = "Combine diagnoses and drugs",
          text = "For diseases present in both slots, choose here whether diagnosis OR drug is enough, or both are required. Careful with treatment events: a disease can be defined as diagnosed OR treated, but a treatment is only a treatment if the drug was dispensed \u2014 never define it with a diagnosis.")),
@@ -65,26 +65,26 @@ guide_steps <- list(
     list(target = "#cr_landmark", title = "Landmark",
          text = "Starting follow-up some months after time zero, and classifying the intervention at that moment, removes the immortal time of comparing treated and untreated from day zero. Whoever had an event before the landmark does not enter.")),
   "Laboratory" = list(
-    list(title = "Coming soon 🔧", text = "Diseases defined from laboratory results will be added here."))
+    list(title = "Coming soon \U0001f527", text = "Diseases defined from laboratory results will be added here."))
 )
 
 # Contextual hints sent by the server after user actions
 guide_hints <- list(
-  pdx = list(target = "#keys_pdx", title = "Table loaded! ✅",
+  pdx = list(target = "#keys_pdx", title = "Table loaded! \u2705",
              text = "Now check that each key field points to the right column. The preview and the checks below show how the app reads your table; orange means something needs a look."),
-  pdrug = list(target = "#keys_pdrug", title = "Dispensations loaded! ✅",
+  pdrug = list(target = "#keys_pdrug", title = "Dispensations loaded! \u2705",
                text = "Check the key fields: patient ID, ATC code and dispensation date."),
-  ddx = list(target = "#keys_ddx", title = "Definitions loaded! ✅",
+  ddx = list(target = "#keys_ddx", title = "Definitions loaded! \u2705",
              text = "Tell the app which column is the disease, the code type and the code."),
-  datc = list(target = "#keys_datc", title = "Drug definitions loaded! ✅",
+  datc = list(target = "#keys_datc", title = "Drug definitions loaded! \u2705",
               text = "Map disease and ATC code; the minimum dispensations column is optional."),
   example = list(target = ".navbar .nav-link[data-guide='2. Definitions']", title = "Example data ready",
                  text = "All five slots are filled with example tables. Look at the key fields here, then continue to tab 2."),
   results = list(target = "#card_summary", title = "Results ready",
                  text = "Persons found per disease. You can download the table, or go to tab 4 to draw the process map."))
 
-guide_head <- function() tags$head(
-  tags$style(HTML("
+guide_head <- function() shiny::tags$head(
+  shiny::tags$style(shiny::HTML("
     .ghost-zone { position: relative; border: 2px dashed #b8c4cf; border-radius: 10px; padding: 132px 12px 4px;
                   overflow: hidden; background: #fbfcfd; }
     .ghost-zone .ghost { position: absolute; top: 26px; left: 10px; right: 10px; height: 100px; opacity: .45;
@@ -106,16 +106,16 @@ guide_head <- function() tags$head(
     #mf-bubble h5 { margin: 0 0 6px; font-weight: 700; color: #2c3e50; }
     #mf-bubble p { margin: 0 0 10px; font-size: .92rem; }
     #mf-bubble .mf-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-    #mf-bubble .mf-dots span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #d5dbe0; margin-right: 3px; }
-    #mf-bubble .mf-dots span.on { background: #f39c12; }
+    #mf-bubble .mf-dots shiny::span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #d5dbe0; margin-right: 3px; }
+    #mf-bubble .mf-dots shiny::span.on { background: #f39c12; }
     #mf-bubble .mf-skip { font-size: .78rem; color: #7b8a97; cursor: pointer; text-decoration: underline; }
     /* help turned off from the Welcome tab: no standing explanations, no ghost tables, no bubbles */
     body.mf-nohelp .mf-help { display: none !important; }
     body.mf-nohelp .ghost-zone { border-style: solid; padding-top: 12px; }
 
   ")),
-  tags$script(HTML(paste0("var MF_STEPS = ", jsonlite::toJSON(guide_steps, auto_unbox = TRUE), ";"))),
-  tags$script(HTML("
+  shiny::tags$script(shiny::HTML(paste0("var MF_STEPS = ", jsonlite::toJSON(guide_steps, auto_unbox = TRUE), ";"))),
+  shiny::tags$script(shiny::HTML("
   (function() {
     var tour = null, seen = {}, MF_HELP = true;
     // remembers finished guides; falls back to memory if the browser blocks localStorage
@@ -168,13 +168,13 @@ guide_head <- function() tags$head(
       while (!tour.hint && tour.i < tour.steps.length && tour.steps[tour.i].target && !targetOf(tour.steps[tour.i])) tour.i++;
       if (tour.i >= tour.steps.length) { finish(); return; }
       var s = tour.steps[tour.i], n = tour.steps.length;
-      var dots = ''; for (var k = 0; k < n; k++) dots += '<span class=\"' + (k === tour.i ? 'on' : '') + '\"></span>';
-      var sp = document.createElement('div'); sp.id = 'mf-spot'; document.body.appendChild(sp);
-      var b = document.createElement('div'); b.id = 'mf-bubble';
-      b.innerHTML = '<h5>' + s.title + '</h5><p>' + s.text + '</p><div class=\"mf-foot\"><div class=\"mf-dots\">' + dots + '</div><div>' +
-        (n > 1 ? '<span class=\"mf-skip\">Skip guide</span> ' : '') +
-        (tour.i > 0 ? '<button class=\"btn btn-sm btn-light\" data-mf=\"back\">◀</button> ' : '') +
-        '<button class=\"btn btn-sm btn-warning\" data-mf=\"next\">' + (tour.i === n - 1 ? 'Got it' : 'Next ▶') + '</button></div></div>';
+      var dots = ''; for (var k = 0; k < n; k++) dots += '<shiny::span class=\"' + (k === tour.i ? 'on' : '') + '\"></shiny::span>';
+      var sp = document.createElement('shiny::div'); sp.id = 'mf-spot'; document.body.appendChild(sp);
+      var b = document.createElement('shiny::div'); b.id = 'mf-bubble';
+      b.innerHTML = '<h5>' + s.title + '</h5><p>' + s.text + '</p><shiny::div class=\"mf-foot\"><shiny::div class=\"mf-dots\">' + dots + '</shiny::div><shiny::div>' +
+        (n > 1 ? '<shiny::span class=\"mf-skip\">Skip guide</shiny::span> ' : '') +
+        (tour.i > 0 ? '<button class=\"btn btn-sm btn-light\" data-mf=\"back\">\u25c0</button> ' : '') +
+        '<button class=\"btn btn-sm btn-warning\" data-mf=\"next\">' + (tour.i === n - 1 ? 'Got it' : 'Next \u25b6') + '</button></shiny::div></shiny::div>';
       document.body.appendChild(b);
       b.querySelector('[data-mf=next]').onclick = function() { tour.i++; tour.i >= n ? finish() : show(); };
       var bk = b.querySelector('[data-mf=back]'); if (bk) bk.onclick = function() { tour.i--; show(); };
@@ -228,9 +228,9 @@ guide_head <- function() tags$head(
   ")))
 
 # Upload zone with the expected table faded in the background
-ghost_zone <- function(id, ...) div(id = paste0("zone_", id), class = "ghost-zone",
-  div(class = "ghost-label mf-help", "Your table should look like this (column names are free):"),
-  div(class = "ghost mf-help", html_table(table_specs[[id]]$example)),
+ghost_zone <- function(id, ...) shiny::div(id = paste0("zone_", id), class = "ghost-zone",
+  shiny::div(class = "ghost-label mf-help", "Your table should look like this (column names are free):"),
+  shiny::div(class = "ghost mf-help", html_table(table_specs[[id]]$example)),
   ...)
 
 send_hint <- function(session, key) {
