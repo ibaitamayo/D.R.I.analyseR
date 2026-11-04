@@ -59,8 +59,12 @@ A browser window opens. To stop, press the red stop button in RStudio, or Esc in
 ### Trying it without any data
 
 In the application: tab **1. Patient data** → *Load example patient tables*, then tab
-**2. Definitions** → *Load the example definitions*, then tab **3. Event search** → *Find
-events*. The example data are synthetic people, invented for this purpose.
+**2. Definitions** → *Load the DRID definitions*, then tab **3. Event search** → *Find events*.
+That should report around 20,000 persons and 99,000 person-event pairs in a second or two.
+
+The people are synthetic, invented for this purpose. The definitions are not: they are the real
+code lists described in [ASSUMPTIONS.md](ASSUMPTIONS.md), so what the demo shows is the actual
+analysis running on made-up patients.
 
 ---
 
